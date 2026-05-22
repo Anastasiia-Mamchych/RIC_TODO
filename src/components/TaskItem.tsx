@@ -1,11 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { COLORS } from '@/constants/colors';
 import { Task } from '@/constants/types';
 
 const PRIORITY_COLORS: Record<Task['priority'], string> = {
-  high: '#ef4444',
-  medium: '#f59e0b',
-  low: '#22c55e',
+  high: COLORS.priorityHigh,
+  medium: COLORS.priorityMedium,
+  low: COLORS.priorityLow,
 };
 
 type TaskItemProps = {
@@ -17,21 +19,22 @@ type TaskItemProps = {
 export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={[styles.checkbox, task.completed && styles.checkboxDone]}
-        onPress={() => onToggle(task.id)}
-      >
-        {task.completed && <Text style={styles.checkmark}>✓</Text>}
+      <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
+
+      <TouchableOpacity onPress={() => onToggle(task.id)}>
+        <Ionicons
+          name={task.completed ? 'checkmark-circle' : 'ellipse-outline'}
+          size={26}
+          color={task.completed ? COLORS.primary : COLORS.primaryLight}
+        />
       </TouchableOpacity>
 
       <Text style={[styles.title, task.completed && styles.titleDone]}>
         {task.title}
       </Text>
 
-      <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
-
-      <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(task.id)}>
-        <Text style={styles.deleteText}>✕</Text>
+      <TouchableOpacity onPress={() => onDelete(task.id)} style={styles.deleteButton}>
+        <Ionicons name="trash-outline" size={18} color="#F0A0B0" />
       </TouchableOpacity>
     </View>
   );
@@ -41,54 +44,28 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 16,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#4f6ef7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxDone: {
-    backgroundColor: '#4f6ef7',
-    borderColor: '#4f6ef7',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  title: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1a1a1a',
-  },
-  titleDone: {
-    textDecorationLine: 'line-through',
-    color: '#999',
   },
   priorityDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  deleteButton: {
-    padding: 4,
+  title: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    fontWeight: '400',
   },
-  deleteText: {
-    color: '#ccc',
-    fontSize: 14,
+  titleDone: {
+    textDecorationLine: 'line-through',
+    color: COLORS.textSecondary,
+  },
+  deleteButton: {
+    padding: 2,
   },
 });

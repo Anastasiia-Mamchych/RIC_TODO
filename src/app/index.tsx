@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
   FlatList,
@@ -10,17 +12,18 @@ import {
 } from 'react-native';
 
 import { TaskItem } from '@/components/TaskItem';
+import { COLORS } from '@/constants/colors';
 import { Priority, Task } from '@/constants/types';
 
-const PRIORITY_OPTIONS: { label: string; value: Priority; color: string }[] = [
-  { label: 'Високий', value: 'high', color: '#ef4444' },
-  { label: 'Середній', value: 'medium', color: '#f59e0b' },
-  { label: 'Низький', value: 'low', color: '#22c55e' },
+const PRIORITY_OPTIONS: { value: Priority; color: string }[] = [
+  { value: 'high', color: COLORS.priorityHigh },
+  { value: 'medium', color: COLORS.priorityMedium },
+  { value: 'low', color: COLORS.priorityLow },
 ];
 
 const INITIAL_TASKS: Task[] = [
-  { id: '1', title: 'Купити продукти', completed: false, priority: 'medium' },
-  { id: '2', title: 'Зробити домашнє завдання', completed: true, priority: 'high' },
+  { id: '1', title: 'Купити продукти', completed: false, priority: 'high' },
+  { id: '2', title: 'Зробити домашнє завдання', completed: true, priority: 'medium' },
   { id: '3', title: 'Прогулятись', completed: false, priority: 'low' },
 ];
 
@@ -28,20 +31,32 @@ export default function HomeScreen() {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [inputText, setInputText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
+  const [inputFocused, setInputFocused] = useState(false);
+
+  const completedCount = tasks.filter((t) => t.completed).length;
+  const activeCount = tasks.filter((t) => !t.completed).length;
+  const progress = tasks.length > 0 ? completedCount / tasks.length : 0;
 
   const handleAdd = () => {
     const trimmed = inputText.trim();
     if (!trimmed) return;
-
     const newTask: Task = {
       id: Date.now().toString(),
       title: trimmed,
       completed: false,
       priority: selectedPriority,
     };
-
     setTasks((prev) => [newTask, ...prev]);
     setInputText('');
+    setInputFocused(false);
+  };
+
+  const handleToggle = (id: string) => {
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
+    );
   };
 
   const handleDelete = (id: string) => {
@@ -50,71 +65,102 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Мої завдання</Text>
-      </View>
+      <View style={styles.inner}>
+        <View style={styles.topIcon}>
+          <Ionicons name="checkbox-outline" size={28} color={COLORS.primary} />
+        </View>
 
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          placeholder="Нове завдання..."
-          placeholderTextColor="#999"
-          value={inputText}
-          onChangeText={setInputText}
-          onSubmitEditing={handleAdd}
-          returnKeyType="done"
-        />
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+        <Text style={styles.title}>My Tasks</Text>
 
-      <View style={styles.priorityRow}>
-        {PRIORITY_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.value}
-            style={[
-              styles.priorityButton,
-              selectedPriority === option.value && {
-                backgroundColor: option.color,
-                borderColor: option.color,
-              },
-            ]}
-            onPress={() => setSelectedPriority(option.value)}
-          >
-            <View
-              style={[
-                styles.priorityDot,
-                { backgroundColor: selectedPriority === option.value ? '#fff' : option.color },
-              ]}
-            />
-            <Text
-              style={[
-                styles.priorityLabel,
-                selectedPriority === option.value && { color: '#fff' },
-              ]}
-            >
-              {option.label}
+        <View style={styles.progressSection}>
+          <View style={styles.progressLabelRow}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressPercent}>
+              {Math.round(progress * 100)}%
             </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          </View>
+          <View style={styles.progressTrack}>
+            <LinearGradient
+              colors={[COLORS.progressStart, COLORS.progressEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]}
+            />
+          </View>
+          <Text style={styles.progressSub}>
+            {activeCount} active, {completedCount} completed
+          </Text>
+        </View>
 
-      <FlatList
-        data={tasks}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TaskItem
-            task={item}
-            onToggle={() => {}}
-            onDelete={handleDelete}
-          />
-        )}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>Завдань немає. Додай перше!</Text>
-        }
-      />
+        <View style={styles.inputWrapper}>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="Add a new task..."
+              placeholderTextColor={COLORS.textSecondary}
+              value={inputText}
+              onChangeText={setInputText}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              onSubmitEditing={handleAdd}
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+              <Ionicons name="add" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {inputFocused && (
+            <View style={styles.priorityPopup}>
+              {PRIORITY_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => setSelectedPriority(option.value)}
+                >
+                  <View
+                    style={[
+                      styles.priorityDot,
+                      { backgroundColor: option.color },
+                      selectedPriority === option.value && styles.priorityDotSelected,
+                    ]}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.filterRow}>
+          <TouchableOpacity style={[styles.filterBtn, styles.filterBtnActive]}>
+            <Ionicons name="list-outline" size={16} color="#fff" />
+            <Text style={[styles.filterText, styles.filterTextActive]}>All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterBtn}>
+            <Ionicons name="ellipse-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.filterText}>Active</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterBtn}>
+            <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.filterText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TaskItem
+              task={item}
+              onToggle={handleToggle}
+              onDelete={handleDelete}
+            />
+          )}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No tasks yet</Text>
+          }
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -122,87 +168,143 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.background,
   },
-  header: {
+  inner: {
+    flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+  },
+  topIcon: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  progressSection: {
+    marginBottom: 20,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+  },
+  progressPercent: {
+    fontSize: 14,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  progressTrack: {
+    height: 8,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+    minWidth: 8,
+  },
+  progressSub: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  inputWrapper: {
+    marginBottom: 14,
+    zIndex: 10,
   },
   inputRow: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 10,
     gap: 10,
   },
   input: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: COLORS.textPrimary,
   },
   addButton: {
-    backgroundColor: '#4f6ef7',
-    borderRadius: 12,
-    width: 48,
-    height: 48,
+    backgroundColor: COLORS.primary,
+    borderRadius: 16,
+    width: 50,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '300',
-    lineHeight: 28,
-  },
-  priorityRow: {
+  priorityPopup: {
+    position: 'absolute',
+    top: 58,
+    left: 0,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    gap: 8,
+    gap: 14,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  priorityButton: {
+  priorityDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    opacity: 0.5,
+  },
+  priorityDotSelected: {
+    opacity: 1,
+    transform: [{ scale: 1.3 }],
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#e0e0e0',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.primaryLight,
   },
-  priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  filterBtnActive: {
+    backgroundColor: COLORS.primary,
   },
-  priorityLabel: {
-    fontSize: 13,
-    color: '#666',
+  filterText: {
+    fontSize: 14,
     fontWeight: '500',
+    color: COLORS.textSecondary,
+  },
+  filterTextActive: {
+    color: '#fff',
   },
   list: {
-    paddingHorizontal: 20,
     gap: 10,
     paddingBottom: 20,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#999',
+    color: COLORS.textSecondary,
     fontSize: 15,
     marginTop: 40,
   },
