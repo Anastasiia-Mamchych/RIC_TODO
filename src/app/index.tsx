@@ -15,10 +15,18 @@ import { TaskItem } from '@/components/TaskItem';
 import { COLORS } from '@/constants/colors';
 import { Priority, Task } from '@/constants/types';
 
+type Filter = 'all' | 'active' | 'done';
+
 const PRIORITY_OPTIONS: { value: Priority; color: string }[] = [
   { value: 'high', color: COLORS.priorityHigh },
   { value: 'medium', color: COLORS.priorityMedium },
   { value: 'low', color: COLORS.priorityLow },
+];
+
+const FILTER_OPTIONS: { label: string; value: Filter; icon: string }[] = [
+  { label: 'All', value: 'all', icon: 'list-outline' },
+  { label: 'Active', value: 'active', icon: 'ellipse-outline' },
+  { label: 'Done', value: 'done', icon: 'checkmark-circle-outline' },
 ];
 
 const INITIAL_TASKS: Task[] = [
@@ -32,10 +40,17 @@ export default function HomeScreen() {
   const [inputText, setInputText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
   const [inputFocused, setInputFocused] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<Filter>('all');
 
   const completedCount = tasks.filter((t) => t.completed).length;
   const activeCount = tasks.filter((t) => !t.completed).length;
   const progress = tasks.length > 0 ? completedCount / tasks.length : 0;
+
+  const filteredTasks = tasks.filter((task) => {
+    if (activeFilter === 'active') return !task.completed;
+    if (activeFilter === 'done') return task.completed;
+    return true;
+  });
 
   const handleAdd = () => {
     const trimmed = inputText.trim();
@@ -131,22 +146,29 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.filterRow}>
-          <TouchableOpacity style={[styles.filterBtn, styles.filterBtnActive]}>
-            <Ionicons name="list-outline" size={16} color="#fff" />
-            <Text style={[styles.filterText, styles.filterTextActive]}>All</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.filterBtn}>
-            <Ionicons name="ellipse-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.filterText}>Active</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.filterBtn}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.filterText}>Done</Text>
-          </TouchableOpacity>
+          {FILTER_OPTIONS.map((filter) => {
+            const isActive = activeFilter === filter.value;
+            return (
+              <TouchableOpacity
+                key={filter.value}
+                style={[styles.filterBtn, isActive && styles.filterBtnActive]}
+                onPress={() => setActiveFilter(filter.value)}
+              >
+                <Ionicons
+                  name={filter.icon as any}
+                  size={16}
+                  color={isActive ? '#fff' : COLORS.textSecondary}
+                />
+                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                  {filter.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <FlatList
-          data={tasks}
+          data={filteredTasks}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TaskItem
