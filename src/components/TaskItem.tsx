@@ -1,9 +1,11 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-type Task = {
-  id: string;
-  title: string;
-  completed: boolean;
+import { Task } from '@/constants/types';
+
+const PRIORITY_COLORS: Record<Task['priority'], string> = {
+  high: '#ef4444',
+  medium: '#f59e0b',
+  low: '#22c55e',
 };
 
 type TaskItemProps = {
@@ -25,6 +27,8 @@ export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
       <Text style={[styles.title, task.completed && styles.titleDone]}>
         {task.title}
       </Text>
+
+      <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
 
       <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(task.id)}>
         <Text style={styles.deleteText}>✕</Text>
@@ -74,6 +78,11 @@ const styles = StyleSheet.create({
   titleDone: {
     textDecorationLine: 'line-through',
     color: '#999',
+  },
+  priorityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   deleteButton: {
     padding: 4,
