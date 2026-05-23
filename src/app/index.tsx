@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -31,6 +34,12 @@ const FILTER_OPTIONS: { label: string; value: Filter; icon: string }[] = [
   { label: 'Done', value: 'done', icon: 'checkmark-circle-outline' },
 ];
 
+const PRIORITY_LEGEND = [
+  { color: COLORS.priorityHigh, label: 'High' },
+  { color: COLORS.priorityMedium, label: 'Medium' },
+  { color: COLORS.priorityLow, label: 'Low' },
+];
+
 export default function HomeScreen() {
   const { tasks, loaded, addTask, deleteTask, toggleTask, cyclePriority } = useTasks();
   const [inputText, setInputText] = useState('');
@@ -38,9 +47,19 @@ export default function HomeScreen() {
   const [inputFocused, setInputFocused] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Filter>('all');
 
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
   const completedCount = tasks.filter((t) => t.completed).length;
   const activeCount = tasks.filter((t) => !t.completed).length;
   const progress = tasks.length > 0 ? completedCount / tasks.length : 0;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progress,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
 
   const filteredTasks = tasks.filter((task) => {
     if (activeFilter === 'active') return !task.completed;
@@ -72,110 +91,143 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.inner}>
-        <View style={styles.topIcon}>
-          <Ionicons name="checkbox-outline" size={28} color={COLORS.primary} />
-        </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.inner}>
+          <View style={styles.topIcon}>
+            <Ionicons name="checkbox-outline" size={28} color={COLORS.primary} />
+          </View>
 
-        <Text style={styles.title}>My Tasks</Text>
+          <Text style={styles.title}>My Tasks</Text>
 
-        <View style={styles.progressSection}>
-          <View style={styles.progressLabelRow}>
-            <Text style={styles.progressLabel}>Progress</Text>
-            <Text style={styles.progressPercent}>
-              {Math.round(progress * 100)}%
+          <View style={styles.progressSection}>
+            <View style={styles.progressLabelRow}>
+              <Text style={styles.progressLabel}>Progress</Text>
+              <Text style={styles.progressPercent}>
+                {Math.round(progress * 100)}%
+              </Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <Animated.View
+                style={[
+                  styles.progressFillWrapper,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={[COLORS.progressStart, COLORS.progressEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.progressFill}
+                />
+              </Animated.View>
+            </View>
+            <Text style={styles.progressSub}>
+              {activeCount} active, {completedCount} completed
             </Text>
           </View>
-          <View style={styles.progressTrack}>
-            <LinearGradient
-              colors={[COLORS.progressStart, COLORS.progressEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]}
-            />
-          </View>
-          <Text style={styles.progressSub}>
-            {activeCount} active, {completedCount} completed
-          </Text>
-        </View>
 
-        <View style={styles.inputWrapper}>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="Add a new task..."
-              placeholderTextColor={COLORS.textSecondary}
-              value={inputText}
-              onChangeText={setInputText}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
-              onSubmitEditing={handleAdd}
-              returnKeyType="done"
-            />
-            <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-              <Ionicons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[styles.input, inputFocused && styles.inputFocused]}
+                placeholder="Add a new task..."
+                placeholderTextColor={COLORS.textSecondary}
+                value={inputText}
+                onChangeText={setInputText}
+                onFocus={() => setInputFocused(true)}
+                onBlur={() => setInputFocused(false)}
+                onSubmitEditing={handleAdd}
+                returnKeyType="done"
+              />
+              <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+                <Ionicons name="add" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {inputFocused && (
+              <View style={styles.priorityPopup}>
+                {PRIORITY_OPTIONS.map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => setSelectedPriority(option.value)}
+                  >
+                    <View
+                      style={[
+                        styles.priorityDot,
+                        { backgroundColor: option.color },
+                        selectedPriority === option.value && styles.priorityDotSelected,
+                      ]}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
-          {inputFocused && (
-            <View style={styles.priorityPopup}>
-              {PRIORITY_OPTIONS.map((option) => (
+          <View style={styles.filterRow}>
+            {FILTER_OPTIONS.map((filter) => {
+              const isActive = activeFilter === filter.value;
+              return (
                 <TouchableOpacity
-                  key={option.value}
-                  onPress={() => setSelectedPriority(option.value)}
+                  key={filter.value}
+                  style={[styles.filterBtn, isActive && styles.filterBtnActive]}
+                  onPress={() => setActiveFilter(filter.value)}
                 >
-                  <View
-                    style={[
-                      styles.priorityDot,
-                      { backgroundColor: option.color },
-                      selectedPriority === option.value && styles.priorityDotSelected,
-                    ]}
+                  <Ionicons
+                    name={filter.icon as any}
+                    size={16}
+                    color={isActive ? '#fff' : COLORS.textSecondary}
                   />
+                  <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+                    {filter.label}
+                  </Text>
                 </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <FlatList
+            data={filteredTasks}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TaskItem
+                task={item}
+                onToggle={toggleTask}
+                onDelete={deleteTask}
+                onCyclePriority={cyclePriority}
+              />
+            )}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons name="checkmark-done-outline" size={48} color={COLORS.primaryLight} />
+                <Text style={styles.emptyText}>No tasks yet</Text>
+              </View>
+            }
+          />
+
+          <View style={styles.footer}>
+            <View style={styles.footerLegend}>
+              {PRIORITY_LEGEND.map((item) => (
+                <View key={item.label} style={styles.footerItem}>
+                  <View style={[styles.footerDot, { backgroundColor: item.color }]} />
+                  <Text style={styles.footerLabel}>{item.label}</Text>
+                </View>
               ))}
             </View>
-          )}
+            <Text style={styles.footerHint}>tap dot to change priority</Text>
+          </View>
         </View>
-
-        <View style={styles.filterRow}>
-          {FILTER_OPTIONS.map((filter) => {
-            const isActive = activeFilter === filter.value;
-            return (
-              <TouchableOpacity
-                key={filter.value}
-                style={[styles.filterBtn, isActive && styles.filterBtnActive]}
-                onPress={() => setActiveFilter(filter.value)}
-              >
-                <Ionicons
-                  name={filter.icon as any}
-                  size={16}
-                  color={isActive ? '#fff' : COLORS.textSecondary}
-                />
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {filter.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <FlatList
-          data={filteredTasks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TaskItem
-              task={item}
-              onToggle={toggleTask}
-              onDelete={deleteTask}
-              onCyclePriority={cyclePriority}
-            />
-          )}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No tasks yet</Text>
-          }
-        />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -226,10 +278,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 8,
   },
-  progressFill: {
+  progressFillWrapper: {
     height: '100%',
     borderRadius: 4,
+    overflow: 'hidden',
     minWidth: 8,
+  },
+  progressFill: {
+    flex: 1,
   },
   progressSub: {
     fontSize: 13,
@@ -252,6 +308,11 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     fontSize: 15,
     color: COLORS.textPrimary,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  inputFocused: {
+    borderColor: COLORS.primary,
   },
   addButton: {
     backgroundColor: COLORS.primary,
@@ -315,12 +376,46 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 10,
-    paddingBottom: 20,
+    paddingBottom: 8,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 60,
+    gap: 12,
   },
   emptyText: {
     textAlign: 'center',
     color: COLORS.textSecondary,
     fontSize: 15,
-    marginTop: 40,
+  },
+  footer: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    gap: 4,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.primaryLight,
+  },
+  footerLegend: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  footerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  footerLabel: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  footerHint: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    opacity: 0.6,
   },
 });
