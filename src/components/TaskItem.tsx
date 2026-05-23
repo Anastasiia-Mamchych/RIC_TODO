@@ -14,12 +14,15 @@ type TaskItemProps = {
   task: Task;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
+  onCyclePriority: (id: string) => void;
 };
 
-export function TaskItem({ task, onToggle, onDelete }: TaskItemProps) {
+export function TaskItem({ task, onToggle, onDelete, onCyclePriority }: TaskItemProps) {
   return (
     <View style={styles.container}>
-      <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
+      <TouchableOpacity onPress={() => onCyclePriority(task.id)} hitSlop={8}>
+        <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
+      </TouchableOpacity>
 
       <TouchableOpacity onPress={() => onToggle(task.id)}>
         <Ionicons

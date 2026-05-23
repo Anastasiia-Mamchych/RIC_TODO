@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   SafeAreaView,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
 import { TaskItem } from '@/components/TaskItem';
 import { COLORS } from '@/constants/colors';
 import { Priority, Task } from '@/constants/types';
+import { useTasks } from '@/hooks/useTasks';
 
 type Filter = 'all' | 'active' | 'done';
 
@@ -29,14 +31,8 @@ const FILTER_OPTIONS: { label: string; value: Filter; icon: string }[] = [
   { label: 'Done', value: 'done', icon: 'checkmark-circle-outline' },
 ];
 
-const INITIAL_TASKS: Task[] = [
-  { id: '1', title: 'Купити продукти', completed: false, priority: 'high' },
-  { id: '2', title: 'Зробити домашнє завдання', completed: true, priority: 'medium' },
-  { id: '3', title: 'Прогулятись', completed: false, priority: 'low' },
-];
-
 export default function HomeScreen() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const { tasks, loaded, addTask, deleteTask, toggleTask, cyclePriority } = useTasks();
   const [inputText, setInputText] = useState('');
   const [selectedPriority, setSelectedPriority] = useState<Priority>('medium');
   const [inputFocused, setInputFocused] = useState(false);
@@ -61,22 +57,18 @@ export default function HomeScreen() {
       completed: false,
       priority: selectedPriority,
     };
-    setTasks((prev) => [newTask, ...prev]);
+    addTask(newTask);
     setInputText('');
     setInputFocused(false);
   };
 
-  const handleToggle = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
+  if (!loaded) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator style={{ flex: 1 }} color={COLORS.primary} />
+      </SafeAreaView>
     );
-  };
-
-  const handleDelete = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -173,8 +165,9 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <TaskItem
               task={item}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
+              onToggle={toggleTask}
+              onDelete={deleteTask}
+              onCyclePriority={cyclePriority}
             />
           )}
           contentContainerStyle={styles.list}
