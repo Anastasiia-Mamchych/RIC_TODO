@@ -1,7 +1,5 @@
 # TodoApp
 
-A simple To-Do application built with React Native and Expo.
-
 ## Features
 
 - Add and delete tasks
